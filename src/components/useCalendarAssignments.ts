@@ -1,39 +1,77 @@
 "use client";
 import { useCallback, useState, useEffect } from "react";
 
-const ASSIGNMENTS_KEY = "tinymonth_assignments";
 // assignments: { [date: string]: string[] } (date: YYYY-MM-DD, value: array of calendar ids)
 type AssignmentsMap = Record<string, string[]>;
 
-function getAssignmentsFromStorage(): AssignmentsMap {
-  if (typeof window === "undefined") return {};
-  try {
-    const raw = localStorage.getItem(ASSIGNMENTS_KEY);
-    console.log("Loading assignments from storage:", raw);
-    if (!raw) return {};
-    const parsed = JSON.parse(raw);
-    console.log("Loaded assignments:", parsed);
-    return parsed;
-  } catch (error) {
-    console.error("Error loading assignments:", error);
-    return {};
-  }
+async function fetchData() {
+  const res = await fetch("/api/data", { cache: "no-store" });
+  if (!res.ok) throw new Error("Failed to fetch data");
+  return (await res.json()) as { calendars: unknown; activeId: string | null; assignments: AssignmentsMap };
 }
 
-function saveAssignmentsToStorage(assignments: AssignmentsMap) {
-  if (typeof window === "undefined") return;
-  console.log("Saving assignments:", assignments);
-  localStorage.setItem(ASSIGNMENTS_KEY, JSON.stringify(assignments));
+async function writeData(partial: Partial<{ assignments: AssignmentsMap }>) {
+  const current = await fetchData();
+  const next = { ...current, ...partial };
+  await fetch("/api/data", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(next) });
+  return next;
 }
 
 export default function useCalendarAssignments() {
   const [assignments, setAssignments] = useState<AssignmentsMap>({});
 
   useEffect(() => {
-    const loadedAssignments = getAssignmentsFromStorage();
-    console.log("Loaded assignments:", loadedAssignments);
-    console.log("Total assignments count:", Object.keys(loadedAssignments).length);
-    setAssignments(loadedAssignments);
+    let mounted = true;
+    (async () => {
+      try {
+        console.log("useCalendarAssignments: Starting data fetch...");
+        const data = await fetchData();
+        console.log("useCalendarAssignments: Fetch response:", data);
+        if (!mounted) return;
+        console.log("useCalendarAssignments: Loaded data:", {
+          assignmentsCount: Object.keys(data.assignments || {}).length,
+          sampleAssignments: Object.entries(data.assignments || {}).slice(0, 3)
+        });
+        setAssignments(data.assignments ?? {});
+        // Temporary debug alert to ensure we can see this
+        if (Object.keys(data.assignments || {}).length > 0) {
+          console.log("SUCCESS: useCalendarAssignments loaded", Object.keys(data.assignments).length, "assignment entries");
+        }
+      } catch (error) {
+        console.error("useCalendarAssignments: Failed to load data:", error);
+        console.error("useCalendarAssignments: Error details:", {
+          message: error?.message || 'Unknown error',
+          stack: error?.stack || 'No stack trace',
+          name: error?.name || 'Unknown error name'
+        });
+        if (!mounted) return;
+        setAssignments({});
+      }
+    })();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Force refresh assignments when component mounts
+  useEffect(() => {
+    const refreshData = async () => {
+      try {
+        const data = await fetchData();
+        console.log("useCalendarAssignments: Force refresh data:", {
+          assignmentsCount: Object.keys(data.assignments || {}).length,
+          sampleAssignments: Object.entries(data.assignments || {}).slice(0, 3)
+        });
+        setAssignments(data.assignments ?? {});
+      } catch (error) {
+        console.error("useCalendarAssignments: Force refresh failed:", error);
+      }
+    };
+
+    // Refresh after a short delay to ensure other components are ready
+    const timer = setTimeout(refreshData, 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const addAssignment = useCallback((date: string, calendarId: string) => {
@@ -43,7 +81,11 @@ export default function useCalendarAssignments() {
       const arr = prev[date] ? Array.from(new Set([...prev[date], calendarId])) : [calendarId];
       const updated = { ...prev, [date]: arr };
       console.log("useCalendarAssignments: Updated assignments for", date, ":", updated[date]);
-      saveAssignmentsToStorage(updated);
+      writeData({ assignments: updated }).then(() => {
+        console.log("useCalendarAssignments: Successfully wrote data to API");
+      }).catch((error) => {
+        console.error("useCalendarAssignments: Failed to write data:", error);
+      });
       return updated;
     });
   }, []);
@@ -56,7 +98,7 @@ export default function useCalendarAssignments() {
       const arr = prev[date].filter(id => id !== calendarId);
       const updated = { ...prev, [date]: arr };
       console.log("useCalendarAssignments: Updated assignments for", date, ":", updated[date]);
-      saveAssignmentsToStorage(updated);
+      writeData({ assignments: updated }).catch(() => {});
       return updated;
     });
   }, []);
@@ -68,20 +110,69 @@ export default function useCalendarAssignments() {
   }, [assignments]);
 
   const addMultipleAssignments = useCallback((dates: string[], calendarId: string) => {
+    console.log("useCalendarAssignments: Adding multiple assignments:", { dates, calendarId });
     setAssignments(prev => {
       const updated = { ...prev };
       dates.forEach(date => {
         const arr = updated[date] ? Array.from(new Set([...updated[date], calendarId])) : [calendarId];
         updated[date] = arr;
       });
-      saveAssignmentsToStorage(updated);
+      writeData({ assignments: updated }).catch(() => {});
+      return updated;
+    });
+  }, []);
+
+  const removeMultipleAssignments = useCallback((dates: string[], calendarId: string) => {
+    console.log("useCalendarAssignments: Removing multiple assignments:", { dates, calendarId });
+    setAssignments(prev => {
+      const updated = { ...prev };
+      dates.forEach(date => {
+        if (updated[date]) {
+          const arr = updated[date].filter(id => id !== calendarId);
+          updated[date] = arr;
+        }
+      });
+      writeData({ assignments: updated }).catch(() => {});
+      return updated;
+    });
+  }, []);
+
+  const toggleMultipleAssignments = useCallback((dates: string[], calendarId: string) => {
+    console.log("useCalendarAssignments: Toggling multiple assignments:", { dates, calendarId });
+    setAssignments(prev => {
+      const updated = { ...prev };
+      let shouldAdd = false;
+      
+      // Check if we should add or remove based on the first date
+      if (dates.length > 0) {
+        const firstDate = dates[0];
+        shouldAdd = !prev[firstDate] || !prev[firstDate].includes(calendarId);
+      }
+      
+      dates.forEach(date => {
+        if (shouldAdd) {
+          const arr = updated[date] ? Array.from(new Set([...updated[date], calendarId])) : [calendarId];
+          updated[date] = arr;
+        } else {
+          if (updated[date]) {
+            const arr = updated[date].filter(id => id !== calendarId);
+            updated[date] = arr;
+          }
+        }
+      });
+      
+      writeData({ assignments: updated }).catch(() => {});
       return updated;
     });
   }, []);
 
   const replaceAllAssignments = useCallback((next: AssignmentsMap) => {
+    console.log("useCalendarAssignments: Replacing all assignments:", {
+      count: Object.keys(next).length,
+      sample: Object.entries(next).slice(0, 3)
+    });
     setAssignments(next);
-    saveAssignmentsToStorage(next);
+    writeData({ assignments: next }).catch(() => {});
   }, []);
 
   const clearAllAssignments = useCallback(() => {
@@ -90,14 +181,18 @@ export default function useCalendarAssignments() {
 
   // Debug function to check expected counts
   const debugExpectedCounts = useCallback(() => {
-    // No-op in production; kept for optional debugging
-    console.log("Assignments keys:", Object.keys(assignments).length);
+    console.log("useCalendarAssignments: Current state:", {
+      assignmentsCount: Object.keys(assignments).length,
+      sampleAssignments: Object.entries(assignments).slice(0, 3),
+      totalDates: Object.keys(assignments).length,
+      assignments: assignments
+    });
   }, [assignments]);
 
-  // Call debug on mount
+  // Call debug on mount and when assignments change
   useEffect(() => {
     debugExpectedCounts();
   }, [assignments, debugExpectedCounts]);
 
-  return { assignments, addAssignment, removeAssignment, getAssignments, addMultipleAssignments, replaceAllAssignments, clearAllAssignments };
+  return { assignments, addAssignment, removeAssignment, getAssignments, addMultipleAssignments, removeMultipleAssignments, toggleMultipleAssignments, replaceAllAssignments, clearAllAssignments };
 }
