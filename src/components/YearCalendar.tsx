@@ -11,8 +11,6 @@ const MONTHS = [
 export default function YearCalendar() {
   const { selectedYear, setSelectedYear } = useYear();
 
-  console.log("YearCalendar render:", { selectedYear });
-
   return (
     <div className="flex flex-col items-center">
       <div className="flex items-center gap-4 mb-6">

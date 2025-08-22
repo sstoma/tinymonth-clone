@@ -22,6 +22,10 @@ export default function MonthCalendar({ year, month }: MonthCalendarProps) {
   const firstDay = getFirstDayOfWeek(year, month);
   const days: (number | null)[] = [];
 
+  // Check if this is the current month
+  const now = new Date();
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month;
+
   // Fill empty days before the 1st
   for (let i = 0; i < firstDay; i++) days.push(null);
   // Fill days of month
@@ -30,7 +34,9 @@ export default function MonthCalendar({ year, month }: MonthCalendarProps) {
   while (days.length < 42) days.push(null);
 
   return (
-    <div className="grid grid-cols-7 gap-0.5 text-xs">
+    <div className={`grid grid-cols-7 gap-0.5 text-xs p-2 rounded ${
+      isCurrentMonth ? 'bg-blue-100 border-2 border-blue-300' : ''
+    }`}>
       {["Mon","Tue","Wed","Thu","Fri","Sat","Sun"].map(d => (
         <div key={d} className="text-center font-medium text-gray-500 pb-1">{d}</div>
       ))}

@@ -1,12 +1,10 @@
 "use client";
 import React from "react";
-import useCalendars from "./useCalendars";
-import useCalendarAssignments from "./useCalendarAssignments";
+import { useAppData } from "./AppDataContext";
 import { useYear } from "./YearContext";
 
 export default function YearSelector() {
-  const { calendars } = useCalendars();
-  const { assignments } = useCalendarAssignments();
+  const { calendars, assignments } = useAppData();
   const { selectedYear, setSelectedYear } = useYear();
 
   // Generate years from 2020 to 2030
@@ -24,58 +22,49 @@ export default function YearSelector() {
           count++;
         }
       });
-      stats[calendar.id] = count;
+      stats[calendar.name] = count;
     });
     
     return stats;
   }, [calendars, assignments, selectedYear]);
 
-  const annualStats = getAnnualStats();
+  const stats = getAnnualStats();
 
   return (
-    <div className="w-full max-w-7xl bg-white rounded-lg shadow p-6">
+    <div className="bg-white rounded-lg shadow p-6 mb-6 w-full max-w-4xl">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-xl font-semibold text-gray-800">
-          Annual Statistics for {selectedYear}
+          Annual Statistics ({selectedYear})
         </h2>
-        <div className="flex items-center gap-2">
-          <label htmlFor="year-select" className="text-sm font-medium text-gray-700">
-            Select Year:
-          </label>
-          <select
-            id="year-select"
-            value={selectedYear}
-            onChange={(e) => setSelectedYear(Number(e.target.value))}
-            className="border border-gray-300 rounded-md px-3 py-1 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-          >
-            {years.map(year => (
-              <option key={year} value={year}>
-                {year}
-              </option>
-            ))}
-          </select>
-        </div>
+        <select
+          value={selectedYear}
+          onChange={(e) => setSelectedYear(Number(e.target.value))}
+          className="border border-gray-300 rounded px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          {years.map((year) => (
+            <option key={year} value={year}>
+              {year}
+            </option>
+          ))}
+        </select>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
         {calendars.map((calendar) => (
-          <div
-            key={calendar.id}
-            className="flex items-center justify-between p-3 bg-gray-50 rounded-lg"
-          >
-            <div className="flex items-center gap-3">
+          <div key={calendar.id} className="text-center">
+            <div className="flex items-center justify-center mb-2">
               <div
-                className="w-4 h-4 rounded-full"
+                className="w-4 h-4 rounded-full mr-2"
                 style={{ backgroundColor: calendar.color }}
               />
-              <span className="font-medium text-gray-800">{calendar.name}</span>
+              <span className="text-sm font-medium text-gray-700">
+                {calendar.name}
+              </span>
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-gray-900">
-                {annualStats[calendar.id] || 0}
-              </div>
-              <div className="text-xs text-gray-500">days</div>
+            <div className="text-2xl font-bold text-gray-900">
+              {stats[calendar.name] || 0}
             </div>
+            <div className="text-xs text-gray-500">days</div>
           </div>
         ))}
       </div>

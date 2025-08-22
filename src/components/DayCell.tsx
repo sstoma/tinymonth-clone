@@ -1,8 +1,7 @@
 "use client";
 
 import React from "react";
-import useCalendars from "./useCalendars";
-import useCalendarAssignments from "./useCalendarAssignments";
+import { useAppData } from "./AppDataContext";
 import { useDrag } from "./DragContext";
 
 type DayCellProps = {
@@ -12,9 +11,13 @@ type DayCellProps = {
 };
 
 export default function DayCell({ day, year, month }: DayCellProps) {
-  const { calendars, activeId } = useCalendars();
-  const { getAssignments, addAssignment, removeAssignment, toggleMultipleAssignments } = useCalendarAssignments();
+  const { calendars, activeId, getAssignments, addAssignment, removeAssignment, toggleMultipleAssignments } = useAppData();
   const { dragState, startDrag, updateDrag, endDrag, getDragDates } = useDrag();
+
+  // Check if this is the current month and current day
+  const now = new Date();
+  const isCurrentMonth = now.getFullYear() === year && now.getMonth() === month;
+  const isCurrentDay = day !== null && isCurrentMonth && now.getDate() === day;
 
   if (day === null) {
     return <div className="h-8 sm:h-9 md:h-10 rounded border border-transparent" />;
@@ -62,7 +65,13 @@ export default function DayCell({ day, year, month }: DayCellProps) {
       onMouseDown={handleMouseDown}
       onMouseEnter={handleMouseEnter}
       onMouseUp={handleMouseUp}
-      className={`h-8 sm:h-9 md:h-10 flex flex-col justify-between rounded border border-gray-200 bg-white hover:bg-gray-50 focus:outline-none ${
+      className={`h-8 sm:h-9 md:h-10 flex flex-col justify-between rounded border focus:outline-none ${
+        isCurrentDay 
+          ? 'bg-blue-200 border-blue-500 border-2' 
+          : isCurrentMonth 
+            ? 'bg-gray-100 border-gray-300' 
+            : 'bg-white border-gray-200'
+      } hover:bg-gray-50 ${
         dragState.isDragging && dragState.currentDate === date ? 'bg-blue-100' : ''
       }`}
       title={date}

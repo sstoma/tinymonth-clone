@@ -1,31 +1,4 @@
 {
-  "calendars": [
-    {
-      "id": "lanzarote",
-      "name": "Lanzarote",
-      "color": "#3b82f6"
-    },
-    {
-      "id": "zurich",
-      "name": "Zurich",
-      "color": "#ef4444"
-    },
-    {
-      "id": "must_away_lanza",
-      "name": "Must @ away Lanza",
-      "color": "#22c55e"
-    },
-    {
-      "id": "must_lanzarote",
-      "name": "Must @ Lanzarote",
-      "color": "#a855f7"
-    },
-    {
-      "id": "buy_ticket",
-      "name": "Buy Ticket",
-      "color": "#eab308"
-    }
-  ],
   "assignments": {
     "2022-09-30": [
       "lanzarote"
@@ -2676,16 +2649,16 @@
       "zurich"
     ],
     "2025-01-15": [
-      "zurich",
-      "2"
+      "2",
+      "zurich"
     ],
     "2025-01-16": [
-      "zurich",
-      "2"
+      "2",
+      "zurich"
     ],
     "2025-01-17": [
-      "zurich",
-      "2"
+      "2",
+      "zurich"
     ],
     "2025-01-18": [
       "zurich"
@@ -2697,7 +2670,8 @@
       "zurich"
     ],
     "2025-01-21": [
-      "zurich"
+      "zurich",
+      "must_away_lanza"
     ],
     "2025-01-22": [
       "zurich",
@@ -3835,6 +3809,5 @@
       "buy_ticket"
     ]
   },
-  "activeId": "buy_ticket",
   "version": 1
 }
