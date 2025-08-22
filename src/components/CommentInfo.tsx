@@ -6,11 +6,11 @@ export default function CommentInfo() {
       <div className="flex items-start gap-2">
         <div className="w-2 h-2 bg-yellow-400 rounded-full mt-2 flex-shrink-0"></div>
         <div>
-          <p className="font-medium mb-1">Jak dodać komentarz do dnia:</p>
+          <p className="font-medium mb-1">How to add a comment to a day:</p>
           <ul className="text-xs space-y-1">
-            <li>• <strong>Ctrl+klik</strong> (lub Cmd+klik na Mac) na dzień otwiera edytor komentarza</li>
-            <li>• <strong>Żółta kropka</strong> w prawym górnym rogu oznacza, że dzień ma komentarz</li>
-            <li>• <strong>Najechanie myszką</strong> na dzień pokazuje tooltip z komentarzem</li>
+            <li>• <strong>Ctrl+click</strong> (or Cmd+click on Mac) on a day opens the comment editor</li>
+            <li>• <strong>Yellow dot</strong> in the top right corner means the day has a comment</li>
+            <li>• <strong>Hovering over</strong> a day shows a tooltip with the comment</li>
           </ul>
         </div>
       </div>

@@ -26,7 +26,6 @@
       "color": "#eab308"
     }
   ],
-  "activeId": "lanzarote",
   "assignments": {
     "2022-09-30": [
       "lanzarote"
@@ -3834,8 +3833,6 @@
       "buy_ticket"
     ]
   },
-  "comments": {
-    "2025-02-15": "1"
-  },
+  "activeId": "lanzarote",
   "version": 1
 }

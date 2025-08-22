@@ -10,7 +10,7 @@ type CommentModalProps = {
 
 export default function CommentModal({ isOpen, onClose, date, initialComment }: CommentModalProps) {
   const [commentText, setCommentText] = useState(initialComment);
-  const { setComment, removeComment } = useAppData();
+  const { setComment: updateComment, removeComment } = useAppData();
 
   useEffect(() => {
     setCommentText(initialComment);
@@ -20,7 +20,7 @@ export default function CommentModal({ isOpen, onClose, date, initialComment }: 
 
   const handleSave = () => {
     if (commentText.trim()) {
-      setComment(date, commentText.trim());
+      updateComment(date, commentText.trim());
     } else {
       removeComment(date);
     }
@@ -34,7 +34,7 @@ export default function CommentModal({ isOpen, onClose, date, initialComment }: 
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
-    return date.toLocaleDateString('pl-PL', { 
+    return date.toLocaleDateString('en-US', { 
       weekday: 'long', 
       year: 'numeric', 
       month: 'long', 
@@ -46,13 +46,13 @@ export default function CommentModal({ isOpen, onClose, date, initialComment }: 
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
       <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
         <h2 className="text-xl font-semibold mb-4">
-          Komentarz dla {formatDate(date)}
+          Comment for {formatDate(date)}
         </h2>
         
         <textarea
           value={commentText}
           onChange={(e) => setCommentText(e.target.value)}
-          placeholder="Wpisz komentarz dla tego dnia..."
+          placeholder="Enter a comment for this day..."
           className="w-full h-32 p-3 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
           autoFocus
         />
@@ -62,7 +62,7 @@ export default function CommentModal({ isOpen, onClose, date, initialComment }: 
             onClick={handleSave}
             className="flex-1 bg-blue-500 text-white py-2 px-4 rounded-lg hover:bg-blue-600 transition-colors"
           >
-            Zapisz
+            Save
           </button>
           
           {commentText.trim() && (
@@ -70,7 +70,7 @@ export default function CommentModal({ isOpen, onClose, date, initialComment }: 
               onClick={handleRemove}
               className="px-4 py-2 text-red-600 border border-red-600 rounded-lg hover:bg-red-50 transition-colors"
             >
-              Usuń
+              Remove
             </button>
           )}
           
@@ -78,7 +78,7 @@ export default function CommentModal({ isOpen, onClose, date, initialComment }: 
             onClick={onClose}
             className="px-4 py-2 text-gray-600 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
           >
-            Anuluj
+            Cancel
           </button>
         </div>
       </div>

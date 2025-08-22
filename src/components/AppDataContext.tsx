@@ -47,22 +47,41 @@ type AppDataContextType = {
   
   // Other actions
   refreshData: () => void;
+  importData: (importedData: { calendars: CalendarsMap; assignments: AssignmentsMap; activeId?: string | null; comments?: CommentsMap }) => void;
 };
 
 const AppDataContext = createContext<AppDataContextType | null>(null);
 
 // API functions
 async function fetchData(): Promise<AppData> {
-  const res = await fetch("/api/data", { cache: "no-store" });
-  if (!res.ok) throw new Error("Failed to fetch data");
-  const data = await res.json() as { calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap; comments: CommentsMap };
-  return {
-    calendars: data.calendars || [],
-    activeId: data.activeId || null,
-    assignments: data.assignments || {},
-    comments: data.comments || {},
-    isLoading: false
-  };
+  try {
+    const res = await fetch("/api/data", { 
+      cache: "no-store",
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+    
+    if (!res.ok) throw new Error(`Failed to fetch data: ${res.status} ${res.statusText}`);
+    
+    const rawData = await res.json();
+    
+    // Handle the API response structure
+    const data = {
+      calendars: rawData.calendars || [],
+      activeId: rawData.activeId || null,
+      assignments: rawData.assignments || {},
+      comments: rawData.comments || {}
+    };
+    
+    return {
+      ...data,
+      isLoading: false
+    };
+  } catch (error) {
+    console.error("Error in fetchData:", error);
+    throw error;
+  }
 }
 
 async function writeData(updates: Partial<{ calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap; comments: CommentsMap }>) {
@@ -75,6 +94,8 @@ async function writeData(updates: Partial<{ calendars: CalendarsMap; activeId: s
 }
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
+  console.log("AppDataProvider: Initializing...");
+  
   const [data, setData] = useState<AppData>({
     calendars: [],
     activeId: null,
@@ -83,51 +104,80 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     isLoading: true
   });
 
+  // Debug: show current data state only when needed
+  // console.log("AppDataProvider: Current data state:", data);
+
   // Load initial data
   const refreshData = useCallback(async () => {
     try {
       const newData = await fetchData();
       setData(newData);
     } catch (error) {
-      console.error("Failed to load data:", error);
+      console.error("AppDataProvider: Failed to load data:", error);
       setData(prev => ({ ...prev, isLoading: false }));
     }
   }, []);
 
   useEffect(() => {
     refreshData();
-  }, [refreshData]);
+  }, []);
 
   // Calendar actions
   const setActive = useCallback((id: string) => {
-    setData(prev => ({ ...prev, activeId: id }));
-    writeData({ activeId: id }).catch(console.error);
+    setData(prev => {
+      const newData = { ...prev, activeId: id };
+      // Debounce API writes
+      setTimeout(() => {
+        writeData({ 
+          calendars: newData.calendars,
+          activeId: newData.activeId,
+          assignments: newData.assignments,
+          comments: newData.comments
+        }).catch(console.error);
+      }, 100);
+      
+      return newData;
+    });
   }, []);
 
   const addCalendar = useCallback((name: string, color: string) => {
     const id = name.toLowerCase().replace(/\s+/g, "-");
     const newCalendar = { id, name, color };
     
-    setData(prev => ({
-      ...prev,
-      calendars: [...prev.calendars, newCalendar],
-      activeId: id
-    }));
-    
-    writeData({ 
-      calendars: [...data.calendars, newCalendar], 
-      activeId: id 
-    }).catch(console.error);
-  }, [data.calendars]);
+    setData(prev => {
+      const updatedCalendars = [...prev.calendars, newCalendar];
+      // Write to API with all current data
+      writeData({ 
+        calendars: updatedCalendars, 
+        activeId: id,
+        assignments: prev.assignments,
+        comments: prev.comments
+      }).catch(console.error);
+      
+      return {
+        ...prev,
+        calendars: updatedCalendars,
+        activeId: id
+      };
+    });
+  }, []);
 
   const updateCalendar = useCallback((id: string, updates: Partial<CalendarItem>) => {
-    const updatedCalendars = data.calendars.map(cal => 
-      cal.id === id ? { ...cal, ...updates } : cal
-    );
-    
-    setData(prev => ({ ...prev, calendars: updatedCalendars }));
-    writeData({ calendars: updatedCalendars }).catch(console.error);
-  }, [data.calendars]);
+    setData(prev => {
+      const updatedCalendars = prev.calendars.map(cal => 
+        cal.id === id ? { ...cal, ...updates } : cal
+      );
+      
+      // Write to API with all current data
+      writeData({ 
+        calendars: updatedCalendars,
+        assignments: prev.assignments,
+        comments: prev.comments
+      }).catch(console.error);
+      
+      return { ...prev, calendars: updatedCalendars };
+    });
+  }, []);
 
   // Assignment actions
   const getAssignments = useCallback((date: string) => {
@@ -135,50 +185,77 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [data.assignments]);
 
   const addAssignment = useCallback((date: string, calendarId: string) => {
-    const updatedAssignments = {
-      ...data.assignments,
-      [date]: [...(data.assignments[date] || []), calendarId]
-    };
-    
-    setData(prev => ({ ...prev, assignments: updatedAssignments }));
-    writeData({ assignments: updatedAssignments }).catch(console.error);
-  }, [data.assignments]);
+    setData(prev => {
+      const updatedAssignments = {
+        ...prev.assignments,
+        [date]: [...(prev.assignments[date] || []), calendarId]
+      };
+      
+      // Write to API with all current data
+      writeData({ 
+        calendars: prev.calendars,
+        activeId: prev.activeId,
+        assignments: updatedAssignments,
+        comments: prev.comments
+      }).catch(console.error);
+      
+      return { ...prev, assignments: updatedAssignments };
+    });
+  }, []);
 
   const removeAssignment = useCallback((date: string, calendarId: string) => {
-    const updatedAssignments = {
-      ...data.assignments,
-      [date]: (data.assignments[date] || []).filter(id => id !== calendarId)
-    };
-    
-    setData(prev => ({ ...prev, assignments: updatedAssignments }));
-    writeData({ assignments: updatedAssignments }).catch(console.error);
-  }, [data.assignments]);
+    setData(prev => {
+      const updatedAssignments = {
+        ...prev.assignments,
+        [date]: (prev.assignments[date] || []).filter(id => id !== calendarId)
+      };
+      
+      // Write to API with all current data
+      writeData({ 
+        calendars: prev.calendars,
+        activeId: prev.activeId,
+        assignments: updatedAssignments,
+        comments: prev.comments
+      }).catch(console.error);
+      
+      return { ...prev, assignments: updatedAssignments };
+    });
+  }, []);
 
   const toggleMultipleAssignments = useCallback((dates: string[], calendarId: string) => {
-    const updatedAssignments = { ...data.assignments };
-    
-    let shouldAdd = false;
-    if (dates.length > 0) {
-      const firstDate = dates[0];
-      shouldAdd = !data.assignments[firstDate] || !data.assignments[firstDate].includes(calendarId);
-    }
-
-    dates.forEach(date => {
-      if (shouldAdd) {
-        const existing = updatedAssignments[date] || [];
-        if (!existing.includes(calendarId)) {
-          updatedAssignments[date] = [...existing, calendarId];
-        }
-      } else {
-        if (updatedAssignments[date]) {
-          updatedAssignments[date] = updatedAssignments[date].filter(id => id !== calendarId);
-        }
+    setData(prev => {
+      const updatedAssignments = { ...prev.assignments };
+      
+      let shouldAdd = false;
+      if (dates.length > 0) {
+        const firstDate = dates[0];
+        shouldAdd = !prev.assignments[firstDate] || !prev.assignments[firstDate].includes(calendarId);
       }
-    });
 
-    setData(prev => ({ ...prev, assignments: updatedAssignments }));
-    writeData({ assignments: updatedAssignments }).catch(console.error);
-  }, [data.assignments]);
+      dates.forEach(date => {
+        if (shouldAdd) {
+          const existing = updatedAssignments[date] || [];
+          if (!existing.includes(calendarId)) {
+            updatedAssignments[date] = [...existing, calendarId];
+          }
+        } else {
+          if (updatedAssignments[date]) {
+            updatedAssignments[date] = updatedAssignments[date].filter(id => id !== calendarId);
+          }
+        }
+      });
+
+      // Write to API with all current data
+      writeData({ 
+        calendars: prev.calendars,
+        activeId: prev.activeId,
+        assignments: updatedAssignments,
+        comments: prev.comments
+      }).catch(console.error);
+      
+      return { ...prev, assignments: updatedAssignments };
+    });
+  }, []);
 
   // Comment actions
   const getComment = useCallback((date: string) => {
@@ -186,17 +263,51 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   }, [data.comments]);
 
   const setComment = useCallback((date: string, comment: string) => {
-    const updatedComments = { ...data.comments, [date]: comment };
-    setData(prev => ({ ...prev, comments: updatedComments }));
-    writeData({ comments: updatedComments }).catch(console.error);
-  }, [data.comments]);
+    setData(prev => {
+      const updatedComments = { ...prev.comments, [date]: comment };
+      
+      // Write to API with all current data
+      writeData({ 
+        calendars: prev.calendars,
+        activeId: prev.activeId,
+        assignments: prev.assignments,
+        comments: updatedComments
+      }).catch(console.error);
+      
+      return { ...prev, comments: updatedComments };
+    });
+  }, []);
 
   const removeComment = useCallback((date: string) => {
-    const updatedComments = { ...data.comments };
-    delete updatedComments[date];
-    setData(prev => ({ ...prev, comments: updatedComments }));
-    writeData({ comments: updatedComments }).catch(console.error);
-  }, [data.comments]);
+    setData(prev => {
+      const updatedComments = { ...prev.comments };
+      delete updatedComments[date];
+      
+      // Write to API with all current data
+      writeData({ 
+        calendars: prev.calendars,
+        activeId: prev.activeId,
+        assignments: prev.assignments,
+        comments: updatedComments
+      }).catch(console.error);
+      
+      return { ...prev, comments: updatedComments };
+    });
+  }, []);
+
+  const importData = useCallback((importedData: { calendars: CalendarsMap; assignments: AssignmentsMap; activeId?: string | null; comments?: CommentsMap }) => {
+    setData(prev => {
+      const newData = {
+        calendars: importedData.calendars,
+        activeId: importedData.activeId || prev.activeId,
+        assignments: importedData.assignments,
+        comments: importedData.comments || {},
+        isLoading: false
+      };
+      writeData(newData).catch(console.error);
+      return newData;
+    });
+  }, []);
 
   const contextValue: AppDataContextType = {
     // Data
@@ -224,6 +335,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     
     // Other actions
     refreshData,
+    importData,
   };
 
   return (

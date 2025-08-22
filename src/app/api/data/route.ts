@@ -9,10 +9,12 @@ type CalendarItem = {
 };
 
 type AssignmentsMap = Record<string, string[]>;
+type CommentsMap = Record<string, string>;
 
 type DataShape = {
   calendars: CalendarItem[];
   assignments: AssignmentsMap;
+  comments: CommentsMap;
   activeId: string | null;
   version?: number;
   exportedAt?: string;
@@ -26,7 +28,7 @@ async function ensureDataFile(): Promise<void> {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.access(DATA_FILE);
   } catch {
-    const initial: DataShape = { calendars: [], assignments: {}, activeId: null, version: 1 };
+    const initial: DataShape = { calendars: [], assignments: {}, comments: {}, activeId: null, version: 1 };
     await fs.writeFile(DATA_FILE, JSON.stringify(initial, null, 2), "utf-8");
   }
 }
