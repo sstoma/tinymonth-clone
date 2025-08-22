@@ -2,10 +2,13 @@
   "name": "tinymonth-clone",
   "version": "0.1.0",
   "private": true,
+  "description": "A modern, intuitive calendar management application built with Next.js and React for tracking time, managing schedules, and organizing your life with color-coded calendars and smart features.",
+  "homepage": "https://sstoma.github.io/tinymonth-clone",
   "scripts": {
     "dev": "next dev",
     "import": "ts-node --compiler-options '{\"module\":\"commonjs\"}' scripts/import-assignments.ts",
     "build": "next build",
+    "build:static": "next build && next export",
     "start": "next start",
     "lint": "next lint"
   },
@@ -23,5 +26,16 @@
     "@types/react-dom": "^19",
     "ts-node": "^10",
     "typescript": "^5"
-  }
+  },
+  "keywords": [
+    "calendar",
+    "time-tracking",
+    "schedule-management",
+    "nextjs",
+    "react",
+    "typescript",
+    "tailwindcss"
+  ],
+  "author": "TinyMonth Team",
+  "license": "MIT"
 }

@@ -12,21 +12,31 @@
     },
     {
       "id": "must_away_lanza",
-      "name": "Must @ away Lanza",
-      "color": "#22c55e"
+      "name": "Must @ Zurich",
+      "color": "#ff6251"
     },
     {
       "id": "must_lanzarote",
       "name": "Must @ Lanzarote",
-      "color": "#a855f7"
+      "color": "#00c7fc"
     },
     {
       "id": "buy_ticket",
       "name": "Buy Ticket",
       "color": "#eab308"
+    },
+    {
+      "id": "holiday",
+      "name": "Holiday",
+      "color": "#4d22b3"
+    },
+    {
+      "id": "travel",
+      "name": "Travel",
+      "color": "#aa7942"
     }
   ],
-  "activeId": "lanzarote",
+  "activeId": "must_away_lanza",
   "assignments": {
     "2022-09-30": [
       "lanzarote"
@@ -3402,24 +3412,19 @@
       "lanzarote"
     ],
     "2025-08-31": [
-      "lanzarote",
-      "must_away_lanza"
+      "lanzarote"
     ],
     "2025-09-01": [
-      "lanzarote",
-      "must_away_lanza"
+      "lanzarote"
     ],
     "2025-09-02": [
-      "lanzarote",
-      "must_away_lanza"
+      "lanzarote"
     ],
     "2025-09-03": [
-      "lanzarote",
-      "must_away_lanza"
+      "lanzarote"
     ],
     "2025-09-04": [
-      "lanzarote",
-      "must_away_lanza"
+      "lanzarote"
     ],
     "2025-09-05": [
       "lanzarote"
@@ -3835,7 +3840,8 @@
     ]
   },
   "comments": {
-    "2025-02-15": "1"
+    "2025-09-17": "Talk with Nicolas",
+    "2025-09-16": "Presentation BISCUIT"
   },
   "version": 1
 }
