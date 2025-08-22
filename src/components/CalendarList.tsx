@@ -6,20 +6,9 @@ import { useYear } from "./YearContext";
 import type { CalendarItem } from "./useCalendars";
 
 export default function CalendarList() {
-  console.log("CalendarList: Component function called");
   const { calendars, activeId, setActive } = useCalendars();
-  console.log("CalendarList: useCalendars returned:", { calendarsCount: calendars.length, activeId });
   const { assignments } = useCalendarAssignments();
-  console.log("CalendarList: useCalendarAssignments returned:", { assignmentsCount: Object.keys(assignments).length });
   const { selectedYear } = useYear();
-  console.log("CalendarList: useYear returned:", { selectedYear });
-
-  console.log("CalendarList: Render with data:", {
-    calendarsCount: calendars.length,
-    assignmentsCount: Object.keys(assignments).length,
-    selectedYear,
-    sampleAssignments: Object.entries(assignments).slice(0, 3)
-  });
 
   const getAnnualDayCount = React.useCallback((calendarId: string) => {
     // assignments is Record<string, string[]> where key is date (YYYY-MM-DD) and value is array of calendar IDs
@@ -30,7 +19,6 @@ export default function CalendarList() {
         count++;
       }
     });
-    console.log(`CalendarList: getAnnualDayCount for ${calendarId} in ${selectedYear}: ${count}`);
     return count;
   }, [assignments, selectedYear]);
 
@@ -38,18 +26,9 @@ export default function CalendarList() {
     <aside className="w-56 p-4 bg-white rounded shadow flex flex-col gap-4">
       <h2 className="font-bold text-lg mb-2">Calendars ({selectedYear})</h2>
       
-      {/* DEBUG INFO */}
-      <div className="bg-yellow-100 p-2 rounded text-xs">
-        <div>Calendars: {calendars.length}</div>
-        <div>Assignments: {Object.keys(assignments).length}</div>
-        <div>Year: {selectedYear}</div>
-        <div>Sample data: {calendars.length > 0 ? calendars[0].name : 'none'}</div>
-      </div>
-      
       <div className="flex flex-col gap-2">
         {calendars.map((calendar: CalendarItem) => {
           const dayCount = getAnnualDayCount(calendar.id);
-          console.log(`CalendarList: Rendering calendar ${calendar.name} with ${dayCount} days`);
           return (
             <div
               key={calendar.id}
