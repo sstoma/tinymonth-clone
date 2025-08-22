@@ -1,8 +1,9 @@
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import { useAppData } from "./AppDataContext";
 import { useDrag } from "./DragContext";
+import CommentModal from "./CommentModal";
 
 type DayCellProps = {
   day: number | null;
@@ -11,8 +12,17 @@ type DayCellProps = {
 };
 
 export default function DayCell({ day, year, month }: DayCellProps) {
-  const { calendars, activeId, getAssignments, addAssignment, removeAssignment, toggleMultipleAssignments } = useAppData();
+  const { 
+    calendars, 
+    activeId, 
+    getAssignments, 
+    addAssignment, 
+    removeAssignment, 
+    toggleMultipleAssignments,
+    getComment
+  } = useAppData();
   const { dragState, startDrag, updateDrag, endDrag, getDragDates } = useDrag();
+  const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
 
   // Check if this is the current month and current day
   const now = new Date();
@@ -25,8 +35,17 @@ export default function DayCell({ day, year, month }: DayCellProps) {
 
   const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const assigned = getAssignments(date);
+  const comment = getComment(date);
 
-  const handleClick = () => {
+  const handleClick = (e: React.MouseEvent) => {
+    // If Ctrl/Cmd is pressed, open comment modal
+    if (e.ctrlKey || e.metaKey) {
+      e.preventDefault();
+      setIsCommentModalOpen(true);
+      return;
+    }
+
+    // Otherwise, handle calendar assignment
     if (!activeId) return;
     if (assigned.includes(activeId)) removeAssignment(date, activeId);
     else addAssignment(date, activeId);
@@ -58,31 +77,53 @@ export default function DayCell({ day, year, month }: DayCellProps) {
     .map(id => calendars.find(c => c.id === id))
     .filter(Boolean) as { id: string; color: string }[];
 
+  // Create tooltip content
+  const tooltipContent = [
+    date,
+    comment && `Komentarz: ${comment}`,
+    assigned.length > 0 && `Kalendarze: ${assigned.map(id => calendars.find(c => c.id === id)?.name).filter(Boolean).join(', ')}`
+  ].filter(Boolean).join('\n');
+
   return (
-    <button
-      type="button"
-      onClick={handleClick}
-      onMouseDown={handleMouseDown}
-      onMouseEnter={handleMouseEnter}
-      onMouseUp={handleMouseUp}
-      className={`h-8 sm:h-9 md:h-10 flex flex-col justify-between rounded border focus:outline-none ${
-        isCurrentDay 
-          ? 'bg-blue-200 border-blue-500 border-2' 
-          : isCurrentMonth 
-            ? 'bg-gray-100 border-gray-300' 
-            : 'bg-white border-gray-200'
-      } hover:bg-gray-50 ${
-        dragState.isDragging && dragState.currentDate === date ? 'bg-blue-100' : ''
-      }`}
-      title={date}
-    >
-      <span className="self-end pr-1 pt-0.5 text-[10px] text-gray-700">{day}</span>
-      <div className="flex gap-0.5 px-1 pb-1">
-        {badges.slice(0, 4).map(b => (
-          <span key={b.id} className="w-2 h-2 rounded-full" style={{ background: b.color }} />
-        ))}
-      </div>
-    </button>
+    <>
+      <button
+        type="button"
+        onClick={handleClick}
+        onMouseDown={handleMouseDown}
+        onMouseEnter={handleMouseEnter}
+        onMouseUp={handleMouseUp}
+        className={`h-8 sm:h-9 md:h-10 flex flex-col justify-between rounded border focus:outline-none relative ${
+          isCurrentDay 
+            ? 'bg-blue-200 border-blue-500 border-2' 
+            : isCurrentMonth 
+              ? 'bg-gray-100 border-gray-300' 
+              : 'bg-white border-gray-200'
+        } hover:bg-gray-50 ${
+          dragState.isDragging && dragState.currentDate === date ? 'bg-blue-100' : ''
+        }`}
+        title={tooltipContent}
+      >
+        <span className="self-end pr-1 pt-0.5 text-[10px] text-gray-700">{day}</span>
+        
+        <div className="flex gap-0.5 px-1 pb-1">
+          {badges.slice(0, 4).map(b => (
+            <span key={b.id} className="w-2 h-2 rounded-full" style={{ background: b.color }} />
+          ))}
+        </div>
+        
+        {/* Comment indicator */}
+        {comment && (
+          <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full border border-white" />
+        )}
+      </button>
+
+      <CommentModal
+        isOpen={isCommentModalOpen}
+        onClose={() => setIsCommentModalOpen(false)}
+        date={date}
+        initialComment={comment}
+      />
+    </>
   );
 }
 

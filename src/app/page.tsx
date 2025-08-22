@@ -4,6 +4,7 @@ import { DragProvider } from "../components/DragContext";
 import YearSelector from "../components/YearSelector";
 import { YearProvider } from "../components/YearContext";
 import { AppDataProvider } from "../components/AppDataContext";
+import CommentInfo from "../components/CommentInfo";
 
 export default function Home() {
   return (
@@ -14,6 +15,8 @@ export default function Home() {
             <h1 className="text-2xl font-bold mb-6">TinyMonth</h1>
             
             <YearSelector />
+            
+            <CommentInfo />
             
             <div className="flex gap-6 w-full max-w-7xl">
               <CalendarList />

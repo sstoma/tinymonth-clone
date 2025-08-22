@@ -11,11 +11,13 @@ type CalendarItem = {
 
 type CalendarsMap = CalendarItem[];
 type AssignmentsMap = Record<string, string[]>;
+type CommentsMap = Record<string, string>; // date -> comment
 
 type AppData = {
   calendars: CalendarsMap;
   activeId: string | null;
   assignments: AssignmentsMap;
+  comments: CommentsMap;
   isLoading: boolean;
 };
 
@@ -24,6 +26,7 @@ type AppDataContextType = {
   calendars: CalendarsMap;
   activeId: string | null;
   assignments: AssignmentsMap;
+  comments: CommentsMap;
   isLoading: boolean;
   
   // Calendar actions
@@ -37,6 +40,11 @@ type AppDataContextType = {
   removeAssignment: (date: string, calendarId: string) => void;
   toggleMultipleAssignments: (dates: string[], calendarId: string) => void;
   
+  // Comment actions
+  getComment: (date: string) => string;
+  setComment: (date: string, comment: string) => void;
+  removeComment: (date: string) => void;
+  
   // Other actions
   refreshData: () => void;
 };
@@ -47,16 +55,17 @@ const AppDataContext = createContext<AppDataContextType | null>(null);
 async function fetchData(): Promise<AppData> {
   const res = await fetch("/api/data", { cache: "no-store" });
   if (!res.ok) throw new Error("Failed to fetch data");
-  const data = await res.json() as { calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap };
+  const data = await res.json() as { calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap; comments: CommentsMap };
   return {
     calendars: data.calendars || [],
     activeId: data.activeId || null,
     assignments: data.assignments || {},
+    comments: data.comments || {},
     isLoading: false
   };
 }
 
-async function writeData(updates: Partial<{ calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap }>) {
+async function writeData(updates: Partial<{ calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap; comments: CommentsMap }>) {
   const res = await fetch("/api/data", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -70,6 +79,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     calendars: [],
     activeId: null,
     assignments: {},
+    comments: {},
     isLoading: true
   });
 
@@ -170,11 +180,30 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     writeData({ assignments: updatedAssignments }).catch(console.error);
   }, [data.assignments]);
 
+  // Comment actions
+  const getComment = useCallback((date: string) => {
+    return data.comments[date] || "";
+  }, [data.comments]);
+
+  const setComment = useCallback((date: string, comment: string) => {
+    const updatedComments = { ...data.comments, [date]: comment };
+    setData(prev => ({ ...prev, comments: updatedComments }));
+    writeData({ comments: updatedComments }).catch(console.error);
+  }, [data.comments]);
+
+  const removeComment = useCallback((date: string) => {
+    const updatedComments = { ...data.comments };
+    delete updatedComments[date];
+    setData(prev => ({ ...prev, comments: updatedComments }));
+    writeData({ comments: updatedComments }).catch(console.error);
+  }, [data.comments]);
+
   const contextValue: AppDataContextType = {
     // Data
     calendars: data.calendars,
     activeId: data.activeId,
     assignments: data.assignments,
+    comments: data.comments,
     isLoading: data.isLoading,
     
     // Calendar actions
@@ -187,6 +216,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     addAssignment,
     removeAssignment,
     toggleMultipleAssignments,
+    
+    // Comment actions
+    getComment,
+    setComment,
+    removeComment,
     
     // Other actions
     refreshData,
