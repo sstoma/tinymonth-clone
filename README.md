@@ -26,6 +26,13 @@ A modern, intuitive calendar management application built with Next.js and React
 - **Hover tooltips** display comment content
 - **Persistent storage** of all your notes
 
+### 🎊 **Swiss Holidays Integration**
+- **Automatic Swiss national holidays** for years 2022-2030
+- **Fixed holidays** (New Year, National Day, Christmas, etc.)
+- **Variable holidays** (Easter-based: Easter, Ascension, Pentecost, etc.)
+- **Visual indicators** with grayed-out days and tooltips
+- **Smart integration** that prevents calendar assignments on holidays
+
 ### 🔄 **Import/Export Functionality**
 - **Export your data** to JSON files for backup
 - **Import existing data** from JSON files
@@ -87,6 +94,12 @@ A modern, intuitive calendar management application built with Next.js and React
 - Save or remove comments as needed
 - Yellow dots indicate days with comments
 
+### Swiss Holidays
+- **Automatically displayed** as grayed-out days
+- **Hover over holiday days** to see holiday names
+- **Prevents calendar assignments** on holiday days
+- **Includes all Swiss national holidays** (fixed and variable dates)
+
 ## 🏗️ Architecture
 
 ### Tech Stack
@@ -110,6 +123,13 @@ interface AppData {
   assignments: Record<string, string[]>;
   activeId: string | null;
   comments: Record<string, string>;
+  holidays: Holiday[];
+}
+
+interface Holiday {
+  date: string;
+  name: string;
+  type: 'swiss';
 }
 ```
 
