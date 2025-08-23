@@ -47,8 +47,7 @@ export default function DayCell({ day, year, month }: DayCellProps) {
       return;
     }
 
-    // Don't allow calendar assignments on holidays
-    if (isHolidayDay) return;
+
 
     // Otherwise, handle calendar assignment
     if (!activeId) return;
@@ -57,13 +56,13 @@ export default function DayCell({ day, year, month }: DayCellProps) {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!activeId || isHolidayDay) return;
+    if (!activeId) return;
     e.preventDefault();
     startDrag(date, activeId);
   };
 
   const handleMouseEnter = () => {
-    if (dragState.isDragging && activeId && !isHolidayDay) {
+    if (dragState.isDragging && activeId) {
       updateDrag(date);
     }
   };
@@ -95,7 +94,7 @@ export default function DayCell({ day, year, month }: DayCellProps) {
   
   if (isHolidayDay) {
     // Holiday styling - grayed out
-    cellClassName += 'bg-gray-300 border-gray-400 text-gray-600 cursor-not-allowed ';
+    cellClassName += 'bg-gray-300 border-gray-400 text-gray-600 ';
   } else if (isCurrentDay) {
     // Current day styling
     cellClassName += 'bg-blue-200 border-blue-500 border-2 ';
@@ -107,13 +106,11 @@ export default function DayCell({ day, year, month }: DayCellProps) {
     cellClassName += 'bg-white border-gray-200 ';
   }
 
-  // Add hover effect only for non-holiday days
-  if (!isHolidayDay) {
-    cellClassName += 'hover:bg-gray-50 ';
-  }
+  // Add hover effect for all days
+  cellClassName += 'hover:bg-gray-50 ';
 
   // Add drag state styling
-  if (dragState.isDragging && dragState.currentDate === date && !isHolidayDay) {
+  if (dragState.isDragging && dragState.currentDate === date) {
     cellClassName += 'bg-blue-100 ';
   }
 
@@ -132,13 +129,11 @@ export default function DayCell({ day, year, month }: DayCellProps) {
           {day}
         </span>
 
-        {!isHolidayDay && (
-          <div className="flex gap-0.5 px-1 pb-1">
-            {badges.slice(0, 4).map(b => (
-              <span key={b.id} className="w-2 h-2 rounded-full" style={{ background: b.color }} />
-            ))}
-          </div>
-        )}
+        <div className="flex gap-0.5 px-1 pb-1">
+          {badges.slice(0, 4).map(b => (
+            <span key={b.id} className="w-2 h-2 rounded-full" style={{ background: b.color }} />
+          ))}
+        </div>
 
         {/* Comment indicator */}
         {comment && (
