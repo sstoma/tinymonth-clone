@@ -9,15 +9,23 @@ type CalendarItem = {
   color: string;
 };
 
+type Holiday = {
+  date: string;
+  name: string;
+  type: 'swiss';
+};
+
 type CalendarsMap = CalendarItem[];
 type AssignmentsMap = Record<string, string[]>;
 type CommentsMap = Record<string, string>; // date -> comment
+type HolidaysMap = Holiday[];
 
 type AppData = {
   calendars: CalendarsMap;
   activeId: string | null;
   assignments: AssignmentsMap;
   comments: CommentsMap;
+  holidays: HolidaysMap;
   isLoading: boolean;
 };
 
@@ -27,6 +35,7 @@ type AppDataContextType = {
   activeId: string | null;
   assignments: AssignmentsMap;
   comments: CommentsMap;
+  holidays: HolidaysMap;
   isLoading: boolean;
   
   // Calendar actions
@@ -44,13 +53,95 @@ type AppDataContextType = {
   getComment: (date: string) => string;
   setComment: (date: string, comment: string) => void;
   removeComment: (date: string) => void;
-  
+
+  // Holiday actions
+  isHoliday: (date: string) => boolean;
+
   // Other actions
   refreshData: () => void;
-  importData: (importedData: { calendars: CalendarsMap; assignments: AssignmentsMap; activeId?: string | null; comments?: CommentsMap }) => void;
+  importData: (importedData: { calendars: CalendarsMap; assignments: AssignmentsMap; activeId?: string | null; comments?: CommentsMap; holidays?: HolidaysMap }) => void;
 };
 
 const AppDataContext = createContext<AppDataContextType | null>(null);
+
+// Swiss holidays generation functions
+const generateSwissHolidays = (year: number): Holiday[] => {
+  // Fixed Swiss national holidays (widely observed across Switzerland)
+  const fixedHolidays: Holiday[] = [
+    { date: `${year}-01-01`, name: 'Neujahr', type: 'swiss' },
+    { date: `${year}-01-02`, name: 'Berchtoldstag', type: 'swiss' }, // Observed in many cantons
+    { date: `${year}-01-06`, name: 'Dreikönigstag', type: 'swiss' }, // Epiphany, observed in some cantons
+    { date: `${year}-05-01`, name: 'Tag der Arbeit', type: 'swiss' }, // Labor Day, observed in many cantons
+    { date: `${year}-08-01`, name: 'Bundesfeier', type: 'swiss' },
+    { date: `${year}-08-15`, name: 'Mariä Himmelfahrt', type: 'swiss' }, // Assumption, observed in many cantons
+    { date: `${year}-11-01`, name: 'Allerheiligen', type: 'swiss' }, // All Saints Day, observed in many cantons
+    { date: `${year}-12-25`, name: 'Weihnachten', type: 'swiss' },
+    { date: `${year}-12-26`, name: 'Stephanstag', type: 'swiss' },
+  ];
+
+  // Variable holidays (Easter-based)
+  const easter = getEasterDate(year);
+  const easterMonday = new Date(easter);
+  easterMonday.setDate(easter.getDate() + 1);
+
+  const ascension = new Date(easter);
+  ascension.setDate(easter.getDate() + 39);
+
+  const pentecost = new Date(easter);
+  pentecost.setDate(easter.getDate() + 49);
+
+  const pentecostMonday = new Date(easter);
+  pentecostMonday.setDate(easter.getDate() + 50);
+
+  const corpusChristi = new Date(easter);
+  corpusChristi.setDate(easter.getDate() + 60);
+
+  const variableHolidays: Holiday[] = [
+    { date: formatDate(easter), name: 'Ostersonntag', type: 'swiss' },
+    { date: formatDate(easterMonday), name: 'Ostermontag', type: 'swiss' },
+    { date: formatDate(ascension), name: 'Auffahrt', type: 'swiss' },
+    { date: formatDate(pentecost), name: 'Pfingstsonntag', type: 'swiss' },
+    { date: formatDate(pentecostMonday), name: 'Pfingstmontag', type: 'swiss' },
+    { date: formatDate(corpusChristi), name: 'Fronleichnam', type: 'swiss' },
+  ];
+
+  return [...fixedHolidays, ...variableHolidays];
+};
+
+const getEasterDate = (year: number): Date => {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+
+  return new Date(year, month - 1, day);
+};
+
+const formatDate = (date: Date): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
+// Generate all Swiss holidays for years 2022-2030
+const generateAllSwissHolidays = (): Holiday[] => {
+  const allHolidays: Holiday[] = [];
+  for (let year = 2022; year <= 2030; year++) {
+    allHolidays.push(...generateSwissHolidays(year));
+  }
+  return allHolidays;
+};
 
 // API functions
 async function fetchData(): Promise<AppData> {
@@ -66,13 +157,19 @@ async function fetchData(): Promise<AppData> {
     
     const rawData = await res.json();
     
-    // Handle the API response structure
+    // Always generate fresh Swiss holidays for all years 2022-2030
+    const swissHolidays = generateAllSwissHolidays();
+    
     const data = {
       calendars: rawData.calendars || [],
       activeId: rawData.activeId || null,
       assignments: rawData.assignments || {},
-      comments: rawData.comments || {}
+      comments: rawData.comments || {},
+      holidays: swissHolidays
     };
+    
+    // Ensure holidays are saved to the data file along with other data
+    writeData(data).catch(console.error);
     
     return {
       ...data,
@@ -84,7 +181,7 @@ async function fetchData(): Promise<AppData> {
   }
 }
 
-async function writeData(updates: Partial<{ calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap; comments: CommentsMap }>) {
+async function writeData(updates: Partial<{ calendars: CalendarsMap; activeId: string | null; assignments: AssignmentsMap; comments: CommentsMap; holidays: HolidaysMap }>) {
   const res = await fetch("/api/data", {
     method: "PUT",
     headers: { "Content-Type": "application/json" },
@@ -94,20 +191,15 @@ async function writeData(updates: Partial<{ calendars: CalendarsMap; activeId: s
 }
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
-  console.log("AppDataProvider: Initializing...");
-  
   const [data, setData] = useState<AppData>({
     calendars: [],
     activeId: null,
     assignments: {},
     comments: {},
+    holidays: generateAllSwissHolidays(),
     isLoading: true
   });
 
-  // Debug: show current data state only when needed
-  // console.log("AppDataProvider: Current data state:", data);
-
-  // Load initial data
   const refreshData = useCallback(async () => {
     try {
       const newData = await fetchData();
@@ -126,16 +218,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const setActive = useCallback((id: string) => {
     setData(prev => {
       const newData = { ...prev, activeId: id };
-      // Debounce API writes
       setTimeout(() => {
         writeData({ 
           calendars: newData.calendars,
           activeId: newData.activeId,
           assignments: newData.assignments,
-          comments: newData.comments
+          comments: newData.comments,
+          holidays: newData.holidays
         }).catch(console.error);
       }, 100);
-      
       return newData;
     });
   }, []);
@@ -146,12 +237,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     
     setData(prev => {
       const updatedCalendars = [...prev.calendars, newCalendar];
-      // Write to API with all current data
       writeData({ 
         calendars: updatedCalendars, 
         activeId: id,
         assignments: prev.assignments,
-        comments: prev.comments
+        comments: prev.comments,
+        holidays: prev.holidays
       }).catch(console.error);
       
       return {
@@ -168,11 +259,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         cal.id === id ? { ...cal, ...updates } : cal
       );
       
-      // Write to API with all current data
       writeData({ 
         calendars: updatedCalendars,
         assignments: prev.assignments,
-        comments: prev.comments
+        comments: prev.comments,
+        holidays: prev.holidays
       }).catch(console.error);
       
       return { ...prev, calendars: updatedCalendars };
@@ -191,12 +282,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         [date]: [...(prev.assignments[date] || []), calendarId]
       };
       
-      // Write to API with all current data
       writeData({ 
         calendars: prev.calendars,
         activeId: prev.activeId,
         assignments: updatedAssignments,
-        comments: prev.comments
+        comments: prev.comments,
+        holidays: prev.holidays
       }).catch(console.error);
       
       return { ...prev, assignments: updatedAssignments };
@@ -210,12 +301,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         [date]: (prev.assignments[date] || []).filter(id => id !== calendarId)
       };
       
-      // Write to API with all current data
       writeData({ 
         calendars: prev.calendars,
         activeId: prev.activeId,
         assignments: updatedAssignments,
-        comments: prev.comments
+        comments: prev.comments,
+        holidays: prev.holidays
       }).catch(console.error);
       
       return { ...prev, assignments: updatedAssignments };
@@ -245,12 +336,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         }
       });
 
-      // Write to API with all current data
       writeData({ 
         calendars: prev.calendars,
         activeId: prev.activeId,
         assignments: updatedAssignments,
-        comments: prev.comments
+        comments: prev.comments,
+        holidays: prev.holidays
       }).catch(console.error);
       
       return { ...prev, assignments: updatedAssignments };
@@ -266,12 +357,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setData(prev => {
       const updatedComments = { ...prev.comments, [date]: comment };
       
-      // Write to API with all current data
       writeData({ 
         calendars: prev.calendars,
         activeId: prev.activeId,
         assignments: prev.assignments,
-        comments: updatedComments
+        comments: updatedComments,
+        holidays: prev.holidays
       }).catch(console.error);
       
       return { ...prev, comments: updatedComments };
@@ -283,25 +374,32 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const updatedComments = { ...prev.comments };
       delete updatedComments[date];
       
-      // Write to API with all current data
       writeData({ 
         calendars: prev.calendars,
         activeId: prev.activeId,
         assignments: prev.assignments,
-        comments: updatedComments
+        comments: updatedComments,
+        holidays: prev.holidays
       }).catch(console.error);
       
       return { ...prev, comments: updatedComments };
     });
   }, []);
 
-  const importData = useCallback((importedData: { calendars: CalendarsMap; assignments: AssignmentsMap; activeId?: string | null; comments?: CommentsMap }) => {
+  // Holiday actions
+  const isHoliday = useCallback((date: string) => {
+    return data.holidays.some(holiday => holiday.date === date);
+  }, [data.holidays]);
+
+  // Import data
+  const importData = useCallback((importedData: { calendars: CalendarsMap; assignments: AssignmentsMap; activeId?: string | null; comments?: CommentsMap; holidays?: HolidaysMap }) => {
     setData(prev => {
       const newData = {
         calendars: importedData.calendars,
         activeId: importedData.activeId || prev.activeId,
         assignments: importedData.assignments,
         comments: importedData.comments || {},
+        holidays: importedData.holidays || generateAllSwissHolidays(),
         isLoading: false
       };
       writeData(newData).catch(console.error);
@@ -315,6 +413,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     activeId: data.activeId,
     assignments: data.assignments,
     comments: data.comments,
+    holidays: data.holidays,
     isLoading: data.isLoading,
     
     // Calendar actions
@@ -332,10 +431,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     getComment,
     setComment,
     removeComment,
-    
+
+    // Holiday actions
+    isHoliday,
+
     // Other actions
     refreshData,
-    importData,
+    importData
   };
 
   return (

@@ -19,7 +19,8 @@ export default function DayCell({ day, year, month }: DayCellProps) {
     addAssignment, 
     removeAssignment, 
     toggleMultipleAssignments,
-    getComment
+    getComment,
+    isHoliday
   } = useAppData();
   const { dragState, startDrag, updateDrag, endDrag, getDragDates } = useDrag();
   const [isCommentModalOpen, setIsCommentModalOpen] = useState(false);
@@ -36,6 +37,7 @@ export default function DayCell({ day, year, month }: DayCellProps) {
   const date = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
   const assigned = getAssignments(date);
   const comment = getComment(date);
+  const isHolidayDay = isHoliday(date);
 
   const handleClick = (e: React.MouseEvent) => {
     // If Ctrl/Cmd is pressed, open comment modal
@@ -45,6 +47,9 @@ export default function DayCell({ day, year, month }: DayCellProps) {
       return;
     }
 
+    // Don't allow calendar assignments on holidays
+    if (isHolidayDay) return;
+
     // Otherwise, handle calendar assignment
     if (!activeId) return;
     if (assigned.includes(activeId)) removeAssignment(date, activeId);
@@ -52,13 +57,13 @@ export default function DayCell({ day, year, month }: DayCellProps) {
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!activeId) return;
+    if (!activeId || isHolidayDay) return;
     e.preventDefault();
     startDrag(date, activeId);
   };
 
   const handleMouseEnter = () => {
-    if (dragState.isDragging && activeId) {
+    if (dragState.isDragging && activeId && !isHolidayDay) {
       updateDrag(date);
     }
   };
@@ -80,9 +85,37 @@ export default function DayCell({ day, year, month }: DayCellProps) {
   // Create tooltip content
   const tooltipContent = [
     date,
-    comment && `Komentarz: ${comment}`,
-    assigned.length > 0 && `Kalendarze: ${assigned.map(id => calendars.find(c => c.id === id)?.name).filter(Boolean).join(', ')}`
+    isHolidayDay && "Swiss Holiday",
+    comment && `Comment: ${comment}`,
+    assigned.length > 0 && `Calendars: ${assigned.map(id => calendars.find(c => c.id === id)?.name).filter(Boolean).join(', ')}`
   ].filter(Boolean).join('\n');
+
+  // Determine cell styling
+  let cellClassName = `h-8 sm:h-9 md:h-10 flex flex-col justify-between rounded border focus:outline-none relative `;
+  
+  if (isHolidayDay) {
+    // Holiday styling - grayed out
+    cellClassName += 'bg-gray-300 border-gray-400 text-gray-600 cursor-not-allowed ';
+  } else if (isCurrentDay) {
+    // Current day styling
+    cellClassName += 'bg-blue-200 border-blue-500 border-2 ';
+  } else if (isCurrentMonth) {
+    // Current month styling
+    cellClassName += 'bg-gray-100 border-gray-300 ';
+  } else {
+    // Other months styling
+    cellClassName += 'bg-white border-gray-200 ';
+  }
+
+  // Add hover effect only for non-holiday days
+  if (!isHolidayDay) {
+    cellClassName += 'hover:bg-gray-50 ';
+  }
+
+  // Add drag state styling
+  if (dragState.isDragging && dragState.currentDate === date && !isHolidayDay) {
+    cellClassName += 'bg-blue-100 ';
+  }
 
   return (
     <>
@@ -92,25 +125,21 @@ export default function DayCell({ day, year, month }: DayCellProps) {
         onMouseDown={handleMouseDown}
         onMouseEnter={handleMouseEnter}
         onMouseUp={handleMouseUp}
-        className={`h-8 sm:h-9 md:h-10 flex flex-col justify-between rounded border focus:outline-none relative ${
-          isCurrentDay 
-            ? 'bg-blue-200 border-blue-500 border-2' 
-            : isCurrentMonth 
-              ? 'bg-gray-100 border-gray-300' 
-              : 'bg-white border-gray-200'
-        } hover:bg-gray-50 ${
-          dragState.isDragging && dragState.currentDate === date ? 'bg-blue-100' : ''
-        }`}
+        className={cellClassName}
         title={tooltipContent}
       >
-        <span className="self-end pr-1 pt-0.5 text-[10px] text-gray-700">{day}</span>
-        
-        <div className="flex gap-0.5 px-1 pb-1">
-          {badges.slice(0, 4).map(b => (
-            <span key={b.id} className="w-2 h-2 rounded-full" style={{ background: b.color }} />
-          ))}
-        </div>
-        
+                <span className={`self-end pr-1 pt-0.5 text-[10px] ${isHolidayDay ? 'text-gray-500' : 'text-gray-700'}`}>
+          {day}
+        </span>
+
+        {!isHolidayDay && (
+          <div className="flex gap-0.5 px-1 pb-1">
+            {badges.slice(0, 4).map(b => (
+              <span key={b.id} className="w-2 h-2 rounded-full" style={{ background: b.color }} />
+            ))}
+          </div>
+        )}
+
         {/* Comment indicator */}
         {comment && (
           <div className="absolute top-0 right-0 w-2 h-2 bg-yellow-400 rounded-full border border-white" />

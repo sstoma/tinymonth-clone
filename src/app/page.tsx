@@ -8,8 +8,8 @@ import { YearProvider } from "../components/YearContext";
 import { AppDataProvider, useAppData } from "../components/AppDataContext";
 import CommentInfo from "../components/CommentInfo";
 
-function ImportExportButtons() {
-  const { importData, calendars, assignments, activeId, comments } = useAppData();
+function HomeContent() {
+  const { importData, calendars, assignments, activeId, comments, holidays } = useAppData();
 
   const handleImport = async () => {
     const input = document.createElement('input');
@@ -21,15 +21,16 @@ function ImportExportButtons() {
         try {
           const text = await file.text();
           const importedData = JSON.parse(text);
-          
+
           // Import the data
           importData({
             calendars: importedData.calendars || [],
             assignments: importedData.assignments || {},
             activeId: importedData.activeId || null,
-            comments: importedData.comments || {}
+            comments: importedData.comments || {},
+            holidays: importedData.holidays || []
           });
-          
+
           alert("Data imported successfully!");
         } catch (error) {
           console.error("Error importing data:", error);
@@ -46,10 +47,11 @@ function ImportExportButtons() {
       assignments,
       activeId,
       comments,
+      holidays,
       exportedAt: new Date().toISOString(),
       version: 1
     };
-    
+
     const blob = new Blob([JSON.stringify(dataToExport, null, 2)], { type: 'application/json' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -62,20 +64,33 @@ function ImportExportButtons() {
   };
 
   return (
-    <div className="mb-4 flex gap-3">
-      <button
-        onClick={handleImport}
-        className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
-      >
-        📥 Import from file
-      </button>
-      <button
-        onClick={handleExport}
-        className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
-      >
-        📤 Export to file
-      </button>
-    </div>
+    <main className="min-h-screen bg-gray-50 flex flex-col items-center py-8">
+      <h1 className="text-2xl font-bold mb-6">TinyMonth</h1>
+
+      <div className="mb-4 flex gap-3">
+        <button
+          onClick={handleImport}
+          className="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition-colors"
+        >
+          📥 Import from file
+        </button>
+        <button
+          onClick={handleExport}
+          className="bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-600 transition-colors"
+        >
+          📤 Export to file
+        </button>
+      </div>
+
+      <YearSelector />
+
+      <CommentInfo />
+
+      <div className="flex gap-6 w-full max-w-7xl">
+        <CalendarList />
+        <YearCalendar />
+      </div>
+    </main>
   );
 }
 
@@ -84,20 +99,7 @@ export default function Home() {
     <AppDataProvider>
       <DragProvider>
         <YearProvider>
-          <main className="min-h-screen bg-gray-50 flex flex-col items-center py-8">
-            <h1 className="text-2xl font-bold mb-6">TinyMonth</h1>
-            
-            <ImportExportButtons />
-            
-            <YearSelector />
-            
-            <CommentInfo />
-            
-            <div className="flex gap-6 w-full max-w-7xl">
-              <CalendarList />
-              <YearCalendar />
-            </div>
-          </main>
+          <HomeContent />
         </YearProvider>
       </DragProvider>
     </AppDataProvider>

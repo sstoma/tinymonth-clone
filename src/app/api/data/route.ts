@@ -8,13 +8,23 @@ type CalendarItem = {
   color: string;
 };
 
+type Holiday = {
+  date: string;
+  name: string;
+  type: 'swiss';
+};
+
+// Holiday functionality removed for simplification
+
 type AssignmentsMap = Record<string, string[]>;
 type CommentsMap = Record<string, string>;
+type HolidaysMap = Holiday[];
 
 type DataShape = {
   calendars: CalendarItem[];
   assignments: AssignmentsMap;
   comments: CommentsMap;
+  holidays: HolidaysMap;
   activeId: string | null;
   version?: number;
   exportedAt?: string;
@@ -28,7 +38,14 @@ async function ensureDataFile(): Promise<void> {
     await fs.mkdir(DATA_DIR, { recursive: true });
     await fs.access(DATA_FILE);
   } catch {
-    const initial: DataShape = { calendars: [], assignments: {}, comments: {}, activeId: null, version: 1 };
+        const initial: DataShape = {
+      calendars: [],
+      assignments: {},
+      comments: {},
+      holidays: [],
+      activeId: null,
+      version: 1
+    };
     await fs.writeFile(DATA_FILE, JSON.stringify(initial, null, 2), "utf-8");
   }
 }
@@ -39,6 +56,9 @@ export async function GET() {
     await ensureDataFile();
     const raw = await fs.readFile(DATA_FILE, "utf-8");
     const data = JSON.parse(raw);
+    
+    // Backward compatibility - holidays field is no longer used
+    
     console.log("API: Successfully read data, calendars count:", data.calendars?.length || 0);
     return NextResponse.json(data, { status: 200 });
   } catch (e) {
@@ -51,6 +71,9 @@ export async function PUT(request: Request) {
   try {
     await ensureDataFile();
     const incoming: DataShape = await request.json();
+    
+    // Backward compatibility - holidays field is no longer used
+    
     const toWrite = { ...incoming, version: incoming.version ?? 1 };
     await fs.writeFile(DATA_FILE, JSON.stringify(toWrite, null, 2), "utf-8");
     return NextResponse.json({ ok: true }, { status: 200 });
